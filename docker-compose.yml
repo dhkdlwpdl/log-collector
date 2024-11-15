@@ -1,0 +1,43 @@
+version: '3.8'  # Docker Compose 파일 버전
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: timescaledb
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - TIMESCALEDB_TELEMETRY=off
+    # volumes:
+    #   - timescale_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  generator:
+    build:
+      context: ./generator
+    container_name: generator
+    volumes:
+      - ./data:/app/data # 데이터 디렉토리
+      - ./logs:/app/logs # 로그 파일 저장 위치
+
+  collector:
+    build:
+      context: ./collector
+    container_name: collector
+    volumes:
+      - ./data:/app/data # 데이터 디렉토리
+      - ./logs:/app/logs # 로그 파일 저장 위치
+      - ./collector/offsets:/app/offsets # 오프셋 볼륨으로 관리
+    depends_on:
+      - timescaledb
+
+  api-service:
+    build:
+      context: ./api-service
+    container_name: api-service
+    depends_on:
+      - timescaledb
+    ports:
+      - "5000:5000"
